@@ -9,59 +9,63 @@ terraform {
 
 provider "docker" {}
 
-# Create a Docker network
+variable "docker_image" {
+  description = "Docker image for Node.js app"
+  default     = "madhan1205/boiler:latest"
+}
+
+# Create Docker network
 resource "docker_network" "app_network" {
   name = "app_network"
 }
 
-# Postgres container
+# PostgreSQL container
 resource "docker_container" "postgres" {
   name  = "postgres_db"
   image = "postgres:15"
+
+  env = [
+    "POSTGRES_USER=postgres",
+    "POSTGRES_PASSWORD=postgres",
+    "POSTGRES_DB=boilerdb"
+  ]
 
   ports {
     internal = 5432
     external = 5432
   }
 
-  env = [
-    "POSTGRES_USER=postgres",
-    "POSTGRES_PASSWORD=postgres",
-    "POSTGRES_DB=mydb"
-  ]
+  volumes {
+    host_path      = "${path.module}/pgdata"
+    container_path = "/var/lib/postgresql/data"
+  }
 
   networks_advanced {
     name = docker_network.app_network.name
   }
-
-  volumes {
-    host_path      = "/home/madhan/boilerplate2/terraform/pgdata"
-    container_path = "/var/lib/postgresql/data"
-  }
-
-  restart = "always"
 }
 
-# Node.js app container (pull image from Docker Hub)
+# Node.js App container
 resource "docker_container" "node_app" {
   name  = "node_app"
-  image = "madhan1205/boiler:latest"  # pull the latest image from Docker Hub
-
-  env = [
-    "PORT=3000",
-    "DATABASE_URL=postgres://postgres:postgres@postgres_db:5432/mydb"
-  ]
-
+  image = var.docker_image
   ports {
     internal = 3000
     external = 3000
   }
 
+  env = [
+    "DB_HOST=postgres_db",
+    "DB_USER=postgres",
+    "DB_PASS=postgres",
+    "DB_NAME=boilerdb",
+    "NODE_ENV=development"
+  ]
+
+  depends_on = [docker_container.postgres]
+
   networks_advanced {
     name = docker_network.app_network.name
   }
-
-  depends_on = [docker_container.postgres]
-  restart    = "on-failure"
 }
 
