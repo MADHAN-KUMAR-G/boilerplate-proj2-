@@ -4,8 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "madhan1205/boiler"
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
-        PORT       = "3000" 
-        TF_DIR     = "boilerplate2/terraform" // Terraform folder
+        PORT       = "3000"
     }
 
     stages {
@@ -19,17 +18,13 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                dir('boilerplate2') {
-                    sh 'yarn install --frozen-lockfile'
-                }
+                sh 'yarn install --frozen-lockfile'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir('boilerplate2') {
-                    sh "docker build -f ci-cd/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG ."
-                }
+                sh "docker build -f boilerplate2/ci-cd/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG boilerplate2/"
             }
         }
 
@@ -44,20 +39,25 @@ pipeline {
             }
         }
 
-        stage('Terraform Init & Apply') {
+        stage('Deploy') {
             steps {
-                dir(TF_DIR) {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve'
+                script {
+                    // Stop and remove existing container if it exists
+                    sh 'docker stop boiler || true'
+                    sh 'docker rm boiler || true'
+                    
+                    // Free up port 3000 if any process is still listening
+                    sh '''
+                    PID=$(sudo lsof -ti :3000)
+                    if [ -n "$PID" ]; then
+                        echo "Killing process on port 3000: $PID"
+                        sudo kill -9 $PID
+                    fi
+                    '''
+                    
+                    // Run the new container
+                    sh "docker run -d -p $PORT:$PORT --name boiler $IMAGE_NAME:$IMAGE_TAG"
                 }
-            }
-        }
-
-        stage('Deploy App Container') {
-            steps {
-                sh "docker stop boiler || true"
-                sh "docker rm boiler || true"
-                sh "docker run -d -p $PORT:$PORT --name boiler $IMAGE_NAME:$IMAGE_TAG"
             }
         }
     }
@@ -65,6 +65,7 @@ pipeline {
     post {
         always {
             sh 'docker images'
+            sh 'docker ps -a'
         }
     }
 }
