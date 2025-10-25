@@ -14,6 +14,9 @@ provider "docker" {}
 # ----------------------------
 resource "docker_network" "app_network" {
   name = "app_network"
+  lifecycle {
+    ignore_changes= [name]
+}
 }
 
 # ----------------------------
