@@ -36,7 +36,7 @@ resource "docker_container" "postgres" {
   }
 
   volumes {
-    host_path      = "${path.module}/pgdata"
+    host_path      = "/var/lib/jenkins/workspace/boilerplate2/boilerplate2/terraform/pgdata"
     container_path = "/var/lib/postgresql/data"
   }
 
