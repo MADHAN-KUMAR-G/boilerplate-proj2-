@@ -4,12 +4,11 @@ pipeline {
     environment {
         IMAGE_NAME = "madhan1205/boiler"
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
-        PORT       = "3000"
-        TERRAFORM_DIR = "boilerplate2/terraform"
+        PORT       = "3000" 
+        TF_DIR     = "boilerplate2/terraform" // Terraform folder
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main', 
@@ -18,33 +17,19 @@ pipeline {
             }
         }
 
-        stage('Cleanup Docker') {
-            steps {
-                sh '''
-                docker rm -f $(docker ps -aq) || true
-                docker network rm app_network || true
-                '''
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
-                sh 'yarn install --frozen-lockfile'
-            }
-        }
-
-        stage('Terraform Init & Apply') {
-            steps {
-                dir("${TERRAFORM_DIR}") {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve'
+                dir('boilerplate2') {
+                    sh 'yarn install --frozen-lockfile'
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -f ci-cd/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG ../"
+                dir('boilerplate2') {
+                    sh "docker build -f ci-cd/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG ."
+                }
             }
         }
 
@@ -59,7 +44,16 @@ pipeline {
             }
         }
 
-        stage('Deploy Node App') {
+        stage('Terraform Init & Apply') {
+            steps {
+                dir(TF_DIR) {
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
+                }
+            }
+        }
+
+        stage('Deploy App Container') {
             steps {
                 sh "docker stop boiler || true"
                 sh "docker rm boiler || true"
