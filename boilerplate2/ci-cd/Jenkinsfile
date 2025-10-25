@@ -2,68 +2,57 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_USER = 'madhan1205'
-        IMAGE_NAME = 'boiler'
-        IMAGE_TAG = 'latest'
-        TF_DIR = 'terraform' // folder where main.tf is located
+        IMAGE_NAME = "madhan1205/boiler"
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        PORT       = "3000"
+        TERRAFORM_DIR = "terraform"
     }
 
     stages {
-
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                echo '📦 Checking out repository...'
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/MADHAN-KUMAR-G/boilerplate-proj2-.git',
+                    credentialsId: 'github-creds'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'yarn install --frozen-lockfile'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo '🛠️ Building Docker image...'
-                sh '''
-                    docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} -f ci-cd/Dockerfile .
-                '''
+                sh "docker build -f ci-cd/Dockerfile -t $IMAGE_NAME:latest ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                echo '📤 Pushing Docker image to Docker Hub...'
-                withCredentials([string(credentialsId: 'dockerhub-creds', variable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u ${DOCKER_HUB_USER} --password-stdin
-                        docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
-                        docker logout
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                  usernameVariable: 'DOCKER_USER', 
+                                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh "docker push $IMAGE_NAME:latest"
                 }
             }
         }
 
-        stage('Terraform Init & Apply') {
+        stage('Terraform Apply') {
             steps {
-                script {
-                    echo "🌍 Running Terraform in boilerplate2/${TF_DIR} ..."
-                    dir("boilerplate2/${TF_DIR}") {
-                        // Ensure Terraform files exist
-                        sh 'ls -la'
-
-                        // Initialize Terraform
-                        sh 'terraform init'
-
-                        // Apply configuration (auto approve)
-                        sh 'terraform apply -auto-approve'
-                    }
+                dir("${TERRAFORM_DIR}") {
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
                 }
             }
         }
     }
 
     post {
-        success {
-            echo '✅ Deployment successful!'
-        }
-        failure {
-            echo '❌ Deployment failed!'
+        always {
+            sh 'docker ps -a'
         }
     }
 }
