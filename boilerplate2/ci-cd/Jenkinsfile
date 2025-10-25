@@ -4,8 +4,9 @@ pipeline {
     environment {
         IMAGE_NAME = "madhan1205/boiler"
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
-        PORT       = "3000"
-        TERRAFORM_DIR = "terraform"
+        APP_DIR    = "boilerplate2"
+        DOCKERFILE_PATH = "boilerplate2/ci-cd/Dockerfile"
+        TERRAFORM_DIR = "boilerplate2/terraform"
     }
 
     stages {
@@ -19,13 +20,15 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'yarn install --frozen-lockfile'
+                dir("${APP_DIR}") {
+                    sh 'yarn install --frozen-lockfile || yarn install'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -f ci-cd/Dockerfile -t $IMAGE_NAME:latest ."
+                sh "docker build -f ${DOCKERFILE_PATH} -t ${IMAGE_NAME}:latest ${APP_DIR}"
             }
         }
 
@@ -35,7 +38,7 @@ pipeline {
                                                   usernameVariable: 'DOCKER_USER', 
                                                   passwordVariable: 'DOCKER_PASS')]) {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh "docker push $IMAGE_NAME:latest"
+                    sh "docker push ${IMAGE_NAME}:latest"
                 }
             }
         }
