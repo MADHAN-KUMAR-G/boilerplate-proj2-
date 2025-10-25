@@ -9,22 +9,31 @@ terraform {
 
 provider "docker" {}
 
-# ----------------------------
-# Docker Network
-# ----------------------------
+# Docker network
 resource "docker_network" "app_network" {
   name = "app_network"
+
+  # Avoid conflict if network already exists
   lifecycle {
-    ignore_changes= [name]
-}
+    prevent_destroy = false
+  }
 }
 
-# ----------------------------
-# PostgreSQL Container
-# ----------------------------
+# Docker volume for Postgres data
+resource "docker_volume" "pgdata" {
+  name = "pgdata"
+  # Ensures data persists between container restarts
+}
+
+# Postgres container
 resource "docker_container" "postgres" {
   name  = "postgres_db"
   image = "postgres:15"
+
+  ports {
+    internal = 5432
+    external = 5432
+  }
 
   env = [
     "POSTGRES_USER=postgres",
@@ -32,39 +41,31 @@ resource "docker_container" "postgres" {
     "POSTGRES_DB=mydb"
   ]
 
-  ports {
-    internal = 5432
-    external = 5432
-  }
-
   networks_advanced {
     name = docker_network.app_network.name
   }
 
   volumes {
-    host_path      = "/home/madhan/boilerplate2/terraform/pgdata"
     container_path = "/var/lib/postgresql/data"
+    volume_name    = docker_volume.pgdata.name
   }
 
-  restart = "always" # ensures container restarts if crashes
+  restart = "always"
+  must_run = true
 }
 
-# ----------------------------
-# Node.js App Image
-# ----------------------------
+# Node.js Docker image build
 resource "docker_image" "node_app_image" {
   name = "node_app:latest"
 
   build {
-    context    = "../"             # Terraform folder is /terraform, project root is ../
+    context    = "../"              # root of your repo
     dockerfile = "ci-cd/Dockerfile"
-    remove     = true               # remove intermediate images after build
+    remove     = true
   }
 }
 
-# ----------------------------
-# Node.js App Container
-# ----------------------------
+# Node.js container
 resource "docker_container" "node_app" {
   name  = "node_app"
   image = docker_image.node_app_image.name
@@ -84,7 +85,6 @@ resource "docker_container" "node_app" {
   }
 
   depends_on = [docker_container.postgres]
-
-  restart = "on-failure"  # restarts only if container fails
+  restart = "on-failure"
 }
 
