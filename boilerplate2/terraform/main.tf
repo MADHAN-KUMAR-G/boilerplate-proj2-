@@ -9,20 +9,9 @@ terraform {
 
 provider "docker" {}
 
-# Docker network
+# Create a Docker network
 resource "docker_network" "app_network" {
   name = "app_network"
-
-  # Avoid conflict if network already exists
-  lifecycle {
-    prevent_destroy = false
-  }
-}
-
-# Docker volume for Postgres data
-resource "docker_volume" "pgdata" {
-  name = "pgdata"
-  # Ensures data persists between container restarts
 }
 
 # Postgres container
@@ -46,29 +35,17 @@ resource "docker_container" "postgres" {
   }
 
   volumes {
+    host_path      = "/home/madhan/boilerplate2/terraform/pgdata"
     container_path = "/var/lib/postgresql/data"
-    volume_name    = docker_volume.pgdata.name
   }
 
   restart = "always"
-  must_run = true
 }
 
-# Node.js Docker image build
-resource "docker_image" "node_app_image" {
-  name = "node_app:latest"
-
-  build {
-    context    = "../"              # root of your repo
-    dockerfile = "ci-cd/Dockerfile"
-    remove     = true
-  }
-}
-
-# Node.js container
+# Node.js app container (pull image from Docker Hub)
 resource "docker_container" "node_app" {
   name  = "node_app"
-  image = docker_image.node_app_image.name
+  image = "madhan1205/boiler:latest"  # pull the latest image from Docker Hub
 
   env = [
     "PORT=3000",
@@ -85,6 +62,6 @@ resource "docker_container" "node_app" {
   }
 
   depends_on = [docker_container.postgres]
-  restart = "on-failure"
+  restart    = "on-failure"
 }
 
