@@ -4,14 +4,14 @@ pipeline {
     environment {
         DOCKER_HUB_USER = 'madhan1205'
         IMAGE_NAME = 'boiler'
-        IMAGE_TAG = "latest"
-        TF_DIR = "terraform"
+        IMAGE_TAG = 'latest'
+        TF_DIR = 'terraform'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo ' Checking out source code...'
+                echo '📥 Checking out source code...'
                 checkout scm
             }
         }
@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir('boilerplate2') {
-                    echo ' Building Docker image...'
+                    echo '🐳 Building Docker image...'
                     sh 'docker build -f ci-cd/Dockerfile -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .'
                 }
             }
@@ -27,7 +27,7 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                echo ' Pushing Docker image to Docker Hub...'
+                echo '📤 Pushing Docker image to Docker Hub...'
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -40,12 +40,15 @@ pipeline {
 
         stage('Terraform Init & Apply') {
             steps {
-                dir('boilerplate2/${TF_DIR}') {
-                    echo ' Running Terraform Init & Apply...'
-                    sh '''
-                        terraform init
-                        terraform apply -auto-approve
-                    '''
+                script {
+                    def tfPath = "boilerplate2/${TF_DIR}"
+                    echo "🌍 Running Terraform in ${tfPath} ..."
+                    dir(tfPath) {
+                        sh '''
+                            terraform init
+                            terraform apply -auto-approve
+                        '''
+                    }
                 }
             }
         }
@@ -53,10 +56,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment completed successfully!'
+            echo '✅ Deployment completed successfully!'
         }
         failure {
-            echo 'Deployment failed!'
+            echo '❌ Deployment failed!'
         }
     }
 }
