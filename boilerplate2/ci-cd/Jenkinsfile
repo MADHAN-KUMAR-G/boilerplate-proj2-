@@ -2,8 +2,10 @@ pipeline {
     agent any
 
     environment {
-        TF_DIR = "terraform"
-        PORT   = "3000"
+        IMAGE_NAME = "madhan1205/boiler"
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        PORT       = "3000" 
+        TF_DIR     = "boilerplate2/terraform" // Terraform folder
     }
 
     stages {
@@ -17,47 +19,52 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                dir('..') {
+                dir('boilerplate2') {
                     sh 'yarn install --frozen-lockfile'
                 }
             }
         }
 
-        stage('Terraform Init') {
+        stage('Build Docker Image') {
             steps {
-                dir("${TF_DIR}") {
+                dir('boilerplate2') {
+                    sh "docker build -f ci-cd/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG ."
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                  usernameVariable: 'DOCKER_USER', 
+                                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh "docker push $IMAGE_NAME:$IMAGE_TAG"
+                }
+            }
+        }
+
+        stage('Terraform Init & Apply') {
+            steps {
+                dir(TF_DIR) {
                     sh 'terraform init'
-                }
-            }
-        }
-
-        stage('Terraform Plan') {
-            steps {
-                dir("${TF_DIR}") {
-                    sh 'terraform plan'
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                dir("${TF_DIR}") {
                     sh 'terraform apply -auto-approve'
                 }
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Deploy App Container') {
             steps {
-                sh "curl http://localhost:${PORT}/health || echo 'App not reachable yet'"
+                sh "docker stop boiler || true"
+                sh "docker rm boiler || true"
+                sh "docker run -d -p $PORT:$PORT --name boiler $IMAGE_NAME:$IMAGE_TAG"
             }
         }
     }
 
     post {
         always {
-            echo 'Terraform + Docker pipeline finished'
-            sh "docker ps -a"
+            sh 'docker images'
         }
     }
 }
