@@ -5,32 +5,33 @@ pipeline {
         DOCKER_HUB_USER = 'madhan1205'
         IMAGE_NAME = 'boiler'
         IMAGE_TAG = 'latest'
-        TF_DIR = 'terraform'
+        TF_DIR = 'terraform' // folder where main.tf is located
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
-                echo '📥 Checking out source code...'
+                echo '📦 Checking out repository...'
                 checkout scm
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir('boilerplate2') {
-                    echo '🐳 Building Docker image...'
-                    sh 'docker build -f ci-cd/Dockerfile -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .'
-                }
+                echo '🛠️ Building Docker image...'
+                sh '''
+                    docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} -f ci-cd/Dockerfile .
+                '''
             }
         }
 
         stage('Push Docker Image') {
             steps {
                 echo '📤 Pushing Docker image to Docker Hub...'
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASS')]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        echo "$DOCKER_PASS" | docker login -u ${DOCKER_HUB_USER} --password-stdin
                         docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
                         docker logout
                     '''
@@ -41,13 +42,16 @@ pipeline {
         stage('Terraform Init & Apply') {
             steps {
                 script {
-                    def tfPath = "boilerplate2/${TF_DIR}"
-                    echo "🌍 Running Terraform in ${tfPath} ..."
-                    dir(tfPath) {
-                        sh '''
-                            terraform init
-                            terraform apply -auto-approve
-                        '''
+                    echo "🌍 Running Terraform in boilerplate2/${TF_DIR} ..."
+                    dir("boilerplate2/${TF_DIR}") {
+                        // Ensure Terraform files exist
+                        sh 'ls -la'
+
+                        // Initialize Terraform
+                        sh 'terraform init'
+
+                        // Apply configuration (auto approve)
+                        sh 'terraform apply -auto-approve'
                     }
                 }
             }
@@ -56,7 +60,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment completed successfully!'
+            echo '✅ Deployment successful!'
         }
         failure {
             echo '❌ Deployment failed!'
