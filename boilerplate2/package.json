@@ -1,0 +1,73 @@
+{
+  "name": "new-project-base",
+  "version": "1.0.0",
+  "description": "Base project template with TypeScript, Express, and Docker",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:dev": "ts-node src/index.ts",
+    "postinstall": "echo 'Postinstall script disabled for Docker builds'",
+    "clean": "rm -rf dist",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "dev": "nodemon",
+    "dev:local": "NODE_ENV=development ts-node src/index.ts",
+    "db:test": "ts-node -e \"import('./src/config/knex').then(db => db.testKnexConnection())\"",
+    "migrate": "node dist/scripts/knex.js migrate:latest",
+    "migrate:make": "ts-node src/scripts/knex.ts migrate:make",
+    "migrate:rollback": "node dist/scripts/knex.js migrate:rollback",
+    "migrate:status": "node dist/scripts/knex.js migrate:status",
+    "seed": "node dist/scripts/knex.js seed:run",
+    "seed:make": "ts-node src/scripts/knex.ts seed:make",
+    "new-migrate": "ts-node src/scripts/knex.ts migrate:make"
+  },
+  "dependencies": {
+    "@google/genai": "^1.10.0",
+    "@types/pg": "^8.15.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^7.1.0",
+    "joi": "18.0.1",
+    "knex": "3.1.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.16.3",
+    "typescript": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.8",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.10.0",
+    "@types/supertest": "^2.0.16",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "2.32.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.0",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": ">=1.22.0"
+  },
+  "keywords": [
+    "typescript",
+    "express",
+    "docker",
+    "nodejs"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

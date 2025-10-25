@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "madhan1205/boiler"
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        PORT       = "3000" 
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', 
+                    url: 'https://github.com/MADHAN-KUMAR-G/boilerplate.git', 
+                    credentialsId: 'github-creds'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'yarn install --frozen-lockfile'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -f ci-cd/Dockerfile -t  $IMAGE_NAME:$IMAGE_TAG ."
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                  usernameVariable: 'DOCKER_USER', 
+                                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh "docker push $IMAGE_NAME:$IMAGE_TAG"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh "docker stop boiler || true"
+                sh "docker rm boiler || true"
+                sh "docker run -d -p $PORT:$PORT --name boiler $IMAGE_NAME:$IMAGE_TAG"
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker images'
+        }
+    }
+}
+
