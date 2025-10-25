@@ -9,25 +9,24 @@ terraform {
 
 provider "docker" {}
 
-variable "docker_image" {
-  description = "Docker image for Node.js app"
-  default     = "madhan1205/boiler:latest"
-}
-
-# Create Docker network
+# -----------------------------
+# Create a Docker network
+# -----------------------------
 resource "docker_network" "app_network" {
-  name = "app_network"
+  name = "boiler_network"
 }
 
-# PostgreSQL container
+# -----------------------------
+# PostgreSQL Container
+# -----------------------------
 resource "docker_container" "postgres" {
   name  = "postgres_db"
   image = "postgres:15"
 
   env = [
+    "POSTGRES_DB=boilerdb",
     "POSTGRES_USER=postgres",
-    "POSTGRES_PASSWORD=postgres",
-    "POSTGRES_DB=boilerdb"
+    "POSTGRES_PASSWORD=postgres"
   ]
 
   ports {
@@ -35,8 +34,9 @@ resource "docker_container" "postgres" {
     external = 5432
   }
 
+  # ✅ Absolute host path for Jenkins-safe persistent volume
   volumes {
-    host_path      = "/var/lib/jenkins/workspace/boilerplate2/boilerplate2/terraform/pgdata"
+    host_path      = abspath("${path.module}/pgdata")
     container_path = "/var/lib/postgresql/data"
   }
 
@@ -45,10 +45,14 @@ resource "docker_container" "postgres" {
   }
 }
 
-# Node.js App container
-resource "docker_container" "node_app" {
-  name  = "node_app"
-  image = var.docker_image
+# -----------------------------
+# Boiler App Container
+# -----------------------------
+resource "docker_container" "boiler_app" {
+  name  = "boiler_app"
+  image = "madhan1205/boiler:latest"
+  depends_on = [docker_container.postgres]
+
   ports {
     internal = 3000
     external = 3000
@@ -57,15 +61,28 @@ resource "docker_container" "node_app" {
   env = [
     "DB_HOST=postgres_db",
     "DB_USER=postgres",
-    "DB_PASS=postgres",
+    "DB_PASSWORD=postgres",
     "DB_NAME=boilerdb",
-    "NODE_ENV=development"
+    "DB_PORT=5432"
   ]
-
-  depends_on = [docker_container.postgres]
 
   networks_advanced {
     name = docker_network.app_network.name
   }
+}
+
+# -----------------------------
+# Outputs
+# -----------------------------
+output "app_container_name" {
+  value = docker_container.boiler_app.name
+}
+
+output "postgres_container_name" {
+  value = docker_container.postgres.name
+}
+
+output "app_url" {
+  value = "http://localhost:3000"
 }
 
