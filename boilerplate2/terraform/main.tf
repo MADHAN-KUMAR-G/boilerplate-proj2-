@@ -31,7 +31,7 @@ resource "docker_container" "postgres" {
         name = docker_network.app_network.name
     }
     volumes {
-        host_path      = "./pgdata"
+        host_path      = "/home/madhan/boilerplate2/terraform/pgdata"
         container_path = "/var/lib/postgresql/data"
   }
 }
