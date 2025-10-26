@@ -37,6 +37,7 @@
     "knex": "3.1.0",
     "morgan": "^1.10.0",
     "pg": "^8.16.3",
+    "prom-client": "^15.1.1",
     "typescript": "^5.3.2"
   },
   "devDependencies": {
@@ -48,6 +49,7 @@
     "@types/supertest": "^2.0.16",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
+    "@types/prom-client": "^15.0.3",
     "eslint": "^8.54.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-import": "2.32.0",
@@ -66,8 +68,12 @@
     "typescript",
     "express",
     "docker",
-    "nodejs"
+    "nodejs",
+    "monitoring",
+    "prometheus",
+    "grafana"
   ],
   "author": "Your Name",
   "license": "MIT"
 }
+
